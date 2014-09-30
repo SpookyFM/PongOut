@@ -1,0 +1,508 @@
+<?php
+
+// Get the id
+$id = $_GET['id'];
+
+
+// Connect to the database
+include_once('config.php');
+
+$mysqli = new mysqli(constant("DB_HOST"), constant("DB_USER"), constant("DB_PASSWORD"), constant("DB_NAME"));
+if ($mysqli->connect_errno) {
+    echo "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
+}
+
+// Get the name of the level
+$query = "SELECT * FROM levels WHERE id='".$id."'";
+$result = $mysqli->query($query);
+
+if (!$result)
+{
+    echo "Error loading level name: " . $mysqli->error();
+}
+
+
+
+
+
+$result->data_seek(0);
+$row = $result->fetch_assoc();
+    
+$name     = $row['name'];
+
+// Check if a level file exists
+$uploaddirLevel = 'levels/';
+$uploadfileLevel = $uploaddirLevel . $id . '.json';
+
+$isNewLevel = ! file_exists($uploadfileLevel);
+$boolarray = Array(false => 'false', true => 'true');
+
+// Get the theme id
+$theme_id = $row['theme'];
+
+
+// Get the theme name
+$query = "SELECT * FROM themes WHERE id='".$theme_id."';";
+$result = $mysqli->query($query);
+
+if (!$result)
+{
+    echo "Error loading theme name: " . $mysqli->error();
+}
+
+
+$result->data_seek(0);
+$row = $result->fetch_assoc();
+
+$theme = $row['name'];   
+
+
+
+?>
+
+
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>
+PongOut - <?php echo $name; ?>
+</title>
+    
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="../../assets/js/html5shiv.js"></script>
+      <script src="../../assets/js/respond.min.js"></script>
+    <![endif]-->
+    
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.1/themes/base/jquery-ui.css" />
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.1/jquery-ui.js"></script>
+    
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <!-- <script src="//code.jquery.com/jquery.js"></script> -->
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+    
+    
+
+
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.1/themes/base/jquery-ui.css" />
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.1/jquery-ui.js"></script>
+<script src="js/Vec2.js"></script>
+<script src="js/Blob.js"></script>
+<script src="js/BlobBuilder.js"></script>
+<script src="js/canvas-toBlob.js"></script>
+<script src="js/Keyboard.js"></script>
+<script src="js/Paddle.js"></script>
+<script src="js/Ball.js"></script>
+<script src="js/Brick.js"></script>
+<script src="js/Line.js"></script>
+<script src="js/Graphics.js"></script>
+<script src="js/Mouse.js"></script>
+<script src="js/Grid.js"></script>
+<script src="js/Serialization.js"></script>
+<script src="js/AssetLoader.js"></script>
+<script src="js/LevelLoader.js"></script>
+
+    
+<script>
+const id = <?php echo $id; ?>;
+const isNewLevel = <?php echo $boolarray[$isNewLevel]; ?>;
+
+$(function() {
+    // Set up tooltips
+    $( document ).tooltip();
+    
+    // Set up the dialog to open
+    $('#titleDiv').click(function() {
+        $( "#dialog-modal" ).dialog( "open" );
+    });
+	
+    // Set up the dialog
+    $( "#dialog-modal" ).dialog({
+	       height: 250,
+            autoOpen: false,
+	       modal: true,
+           buttons: {
+            "OK": function() {
+                // Get the id and the new name
+                var id = <?php echo $id ?>;
+                var newName = $('#newName').val();
+                var xhr = new XMLHttpRequest();
+
+                xhr.onreadystatechange=function()
+                {
+                    if (xhr.readyState==4 && xhr.status==200)
+                    {
+                        // Change the title
+                        document.title = xhr.responseText;
+                        $('#titleDiv').text(xhr.responseText);
+                    }   
+                  }
+
+                xhr.open("GET","rename.php?id="+id+"&newName="+newName,true);
+                xhr.send();
+                $( this ).dialog( "close" );
+                },
+            Cancel: function() {
+                $( this ).dialog( "close" );
+            }
+	       }
+        });
+     
+});
+    
+</script>
+
+    
+</head>
+<body>
+
+<nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="list.php">PongOut</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li><a href="list.php">Levels</a></li>
+        <li><a href="list_themes.php">Themes</a></li>
+        <li><div id="titleDiv" style="font-weight:bold" class="navbar-text" title="Click to change title"><b><?php echo $name; ?></b></div></li> 
+      </ul>
+        
+        
+        
+        <p class="navbar-text">Theme:</p>
+        
+        
+        
+            <div class="btn-group">
+      <button id="theme_selector" type="button" class="btn btn-default navbar-btn dropdown-toggle" data-toggle="dropdown"><?php echo $theme; ?><span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu" role="menu">
+<?php
+
+
+$query="SELECT * FROM themes";
+$result = $mysqli->query($query);
+
+if (!$result)
+{
+    echo "Error loading theme names: " . $mysqli->error();
+}
+
+$num = $result->num_rows;
+$mysqli->close();
+
+$i = 0;
+while ($i < $num) {
+    $result->data_seek($i);
+    $row = $result->fetch_assoc();
+    $theme_name = $row['name'];
+    echo "<li><a href='#'>".$theme_name."</a></li>";
+	$i++;
+}
+?>
+      </ul>
+    </div>
+        
+        <button type="button" class="btn btn-primary navbar-btn navbar-right" onclick="saveLevel(); return false;">Save level and Close</button>
+        
+    </div><!-- /.navbar-collapse -->
+    
+  </div><!-- /.container-fluid -->
+</nav>
+    
+    
+    
+
+<div class="container">
+    <canvas id="canvas" width="1024" height="786">
+    This text is displayed if your browser does not support HTML5 Canvas.
+    </canvas>
+</div>
+    
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Instructions</h3>
+  </div>
+  <div class="panel-body">
+    <ul>
+        <li><b>Placing new bricks:</b>Use Shift + Left mouse button to place new bricks.</li>
+        <li><b>Moving bricks:</b>Drag and drop the bricks.</li>
+        <li><b>Deleting bricks:</b>Select with Left Mouse Button and press DELETE.</li>
+  </ul>
+  </div>
+</div>    
+
+<!-- Theme selection -->    
+<script>
+  $(function() {
+      // Let the dropdown change it's text when one of the items is clicked.
+      $(".dropdown-menu li a").click(function(){
+  
+  $(".btn:first-child").html($(this).text()+' <span class="caret"></span>');
+  
+})
+  });
+    
+</script>
+    
+<!-- The game script -->
+<script>
+    window.addEventListener('keydown', onkeydown,true);
+    window.addEventListener('keyup', onkeyup,true);
+    
+    const mode = "edit";
+    
+    var outputDiv = document.getElementById("output");
+    var outputTextArea = document.getElementById("outputTextArea");
+        
+    var canvas;
+    var ctx;
+  
+            
+    const WIDTH = 1024;
+    const HEIGHT = 768;
+            
+    var lines = new Array();
+    var bricks = new Array();
+    var paddles = new Array();
+    
+    
+    var balls = new Array();
+    
+    
+    var phantomBrick = null;
+    
+    var selectedBrick = null;
+    
+    var isDragging = false;
+            
+    var draggedBrick = null;
+            
+    var dragStartGlobal = new Object();
+            
+    var dragStartLocal = new Object();
+    
+    var loading = true;
+    var loadedAssets = 0;
+    const assetsToLoad = 1;
+    
+    if (isNewLevel) {
+        // Initialize some defaults
+        paddles.push(new Paddle(1));
+        paddles.push(new Paddle(2));
+        balls.push(new Ball(1));
+    }
+            
+    
+    function clear(ctx) {
+        ctx.fillStyle = "black";
+        ctx.strokeStyle = "black";
+        drawRect(ctx,0, 0, WIDTH, HEIGHT);
+    }
+            
+            
+    function draw() {
+        
+        // Handle keyboard input
+        if (isKeyDown(KEY_DELETE)) {
+            if (selectedBrick != null) {
+                bricks.splice(bricks.indexOf(selectedBrick),1);
+                selectedBrick = null;                
+            }
+        }
+        
+        
+        // Draw the game
+
+        clear(ctx);
+        for (var i = 0; i < paddles.length; i++) {
+            paddles[i].draw(ctx);
+        }
+        
+        for (var i = 0; i < balls.length; i++) {
+            balls[i].draw(ctx);   
+        }
+        
+        for (var i = 0; i < bricks.length; i++) {
+            bricks[i].draw(ctx);   
+        }
+        
+        // Draw the phantom brick
+        if (phantomBrick != null) {
+            ctx.fillStyle = "grey";
+            ctx.strokeStyle = "white";
+            drawRect(ctx, phantomBrick.pos.x, phantomBrick.pos.y, phantomBrick.width, phantomBrick.height);
+        }
+        
+        // Draw the alignment lines
+        for (var i = 0; i < lines.length; i++) {
+            lines[i].draw(ctx);   
+        }
+    }
+            
+    
+        // Find the alignment lines for a brick
+     function checkForOverlap(target) {
+         
+        for (var i = 0; i < bricks.length; i++) {
+            if (bricks[i] != target) {
+                var result = bricks[i].overlaps(target);
+                lines = lines.concat(result);
+            }
+        }
+     }
+            
+    
+            
+    function onmousemove(evt) {
+        lines.length = 0;
+        if (isDragging) {
+             var mousePos = getMousePos(canvas, evt);
+             var offset = new Object();
+            offset.x = mousePos.x - dragStartGlobal.x;
+            offset.y = mousePos.y - dragStartGlobal.y;
+            draggedBrick.pos.x = dragStartLocal.x + offset.x;
+            draggedBrick.pos.y = dragStartLocal.y + offset.y;
+            
+            // TODO: Check for Shift-Key
+            draggedBrick.pos.x = getClosest(draggedBrick.pos.x, gridX);
+            draggedBrick.pos.y = getClosest(draggedBrick.pos.y, gridY);
+            
+            checkForOverlap(draggedBrick);
+        } else {
+            if (isKeyDown(KEY_SHIFT)) {
+                var mousePos = getMousePos(canvas, evt);
+                // Find the best position to place a new brick
+                var closestX = getClosest(mousePos.x, gridX);
+                var closestY = getClosest(mousePos.y, gridY);
+                
+                // Draw a phantom brick there
+                phantomBrick = new Brick();
+                phantomBrick.pos.x = closestX;
+                phantomBrick.pos.y = closestY;
+                
+                checkForOverlap(phantomBrick);
+                
+                
+                
+            } else {
+                // Remove the phantom brick
+                phantomBrick = null;   
+            }
+        }  
+    }
+            
+    function onmousedown(evt) {
+        var mousePos = getMousePos(canvas, evt);
+        if (isKeyDown(KEY_SHIFT)) {
+            // Create a new Brick at that location
+            var mousePos = getMousePos(canvas, evt);
+            // Find the best position to place a new brick
+            var closestX = getClosest(mousePos.x, gridX);
+            var closestY = getClosest(mousePos.y, gridY);
+            var brick = new Brick();
+            brick.pos.x = closestX;
+            brick.pos.y = closestY;
+            bricks.push(brick);
+        } else {
+            var brickClicked = false;
+            for (var i = 0; i < bricks.length; i++) {
+                draggedBrick = bricks[i];
+                if (isPointInRectangle(mousePos.x, mousePos.y, draggedBrick.pos.x, draggedBrick.pos.y, draggedBrick.width, draggedBrick.height)) {
+                    isDragging = true;
+                    if (selectedBrick != null) {
+                        selectedBrick.isSelected = false;   
+                    }
+                    selectedBrick = bricks[i];
+                    selectedBrick.isSelected = true;
+                    brickClicked = true;
+                    dragStartGlobal = mousePos;
+                    dragStartLocal.x = draggedBrick.pos.x;
+                    dragStartLocal.y = draggedBrick.pos.y;
+                    break;
+                }
+            }
+            if (!brickClicked) {
+                if (selectedBrick != null) {
+                    selectedBrick.isSelected = false;   
+                    selectedBrick = null;
+                }
+            }
+        }
+    }
+            
+    function onmouseup(evt) {
+        isDragging = false;
+        
+    }
+            
+            
+    function init() {
+        canvas = document.getElementById("canvas");
+        if (canvas == null) log("Canvas is null");
+        ctx = canvas.getContext("2d");
+        
+        canvas.addEventListener('mousemove', onmousemove, true);
+        canvas.addEventListener('mousedown', onmousedown, true);
+        canvas.addEventListener('mouseup', onmouseup, true);
+
+        
+        return setInterval(draw, 1000/30);
+    }
+    
+    
+    function AssetsLoaded() {
+        console.log("Assets loaded");
+        
+        init();
+    }
+    
+    
+            
+    if (!isNewLevel) {    
+        var assetLoader = new AssetLoader();
+        var levelLoader = new LevelLoader('levels/' + id + '.json');
+        assetLoader.AddLoader(levelLoader);
+
+        assetLoader.StartLoading(AssetsLoaded);
+    } else {
+        init();
+    }
+
+    
+           
+</script>
+
+<!-- The rename level dialogue -->
+<div id="dialog-modal" title="Rename level">
+    <div>Enter a new level name</div>
+    <form>
+        <input type="text" name="newName" id="newName" value="<?php echo $name; ?>" />
+    </form>
+</div> 
+    
+<!-- The form for uploading -->
+<form action="uploadImage.php" method="post">
+<input type="hidden">
+</form>
+    
+</body>
+</html>

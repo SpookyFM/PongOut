@@ -1,0 +1,272 @@
+<?php
+// Get the id
+$id = $_GET['id'];
+
+// Connect to the database
+include_once('config.php');
+
+$mysqli = new mysqli(constant("DB_HOST"), constant("DB_USER"), constant("DB_PASSWORD"), constant("DB_NAME"));
+if ($mysqli->connect_errno) {
+    echo "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
+}
+
+// Get the name of the level
+$query = "SELECT * FROM levels WHERE id='".$id."'";
+$result = $mysqli->query($query);
+
+if (!$result)
+{
+    echo "Error loading level name: " . $mysqli->error();
+}
+
+
+$result->data_seek(0);
+$row = $result->fetch_assoc();
+    
+$name     = $row['name'];
+
+// Get the theme id
+$theme = $row['theme'];
+
+?>
+
+
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>PongOut - <?php echo $name; ?></title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="../../assets/js/html5shiv.js"></script>
+      <script src="../../assets/js/respond.min.js"></script>
+    <![endif]-->
+    
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.1/themes/base/jquery-ui.css" />
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.1/jquery-ui.js"></script>
+    
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <!-- <script src="//code.jquery.com/jquery.js"></script> -->
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+    
+    
+
+
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.1/themes/base/jquery-ui.css" />
+        <script src="js/Vec2.js"></script>
+        <script src="js/Keyboard.js"></script>
+        <script src="js/Paddle.js"></script>
+        <script src="js/Ball.js"></script>
+        <script src="js/Brick.js"></script>
+        <script src="js/Line.js"></script>
+        <script src="js/Graphics.js"></script>
+        <script src="js/Mouse.js"></script>
+        <script src="js/Grid.js"></script>
+        <script src="js/Serialization.js"></script>
+        <script src="js/Sound.js"></script>
+        <script src="js/ImageLoader.js"></script>
+        <script src="js/LevelLoader.js"></script>
+        <script src="js/AssetLoader.js"></script>
+        
+    </head>
+    
+    <body id="output">
+        
+<nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="list.php">PongOut</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li><a href="list.php">Levels</a></li>
+        <li><a href="list_themes.php">Themes</a></li>
+        <li><b class="navbar-text"><?php echo $name; ?></b></li> 
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        
+        
+        
+        
+<div class="container">
+    <canvas id="canvas" width="1024px" height="768px">
+    This text is displayed if your browser does not support HTML5 Canvas.
+    </canvas>
+</div>
+        
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Instructions</h3>
+  </div>
+  <div class="panel-body">
+    <ul>
+        <li><b>Left player:</b> Move your paddle with W and S.</li>
+        <li><b>Right player:</b> Move your paddle with UP and DOWN.</li>
+  </ul>
+  </div>
+</div>  
+        
+<script>
+    const id = <?php echo $id; ?>;
+    const theme = "<?php echo $theme; ?>";
+    
+    const mode = "play";
+    
+    window.addEventListener('keydown', onkeydown,true);
+    window.addEventListener('keyup', onkeyup,true);
+    
+    var outputDiv = document.getElementById("output");
+    var outputTextArea = document.getElementById("outputTextArea");
+        
+    var canvas;
+    var ctx;
+  
+    var previousDate;
+    var date;
+            
+    var imgPaddle = new Image();
+    var imgBrick = new Image();
+    var imgBG = new Image();
+    var imgBall = new Image();
+            
+    const WIDTH = 1024;
+    const HEIGHT = 768;
+            
+    var lines = new Array();
+    var bricks = new Array();
+    var paddles = new Array();
+   
+    
+    var balls = new Array();
+    
+    var phantomBrick = null;
+    
+    var scorePlayer1 = 0;
+    var scorePlayer2 = 0;
+    
+    // Clear to background
+    function clear(ctx) {
+        ctx.drawImage(imgBG, 0, 0, WIDTH, HEIGHT);  
+    }
+            
+    
+    function draw() {
+        date = new Date();
+        var delta = date - previousDate;
+        previousDate = date;
+        
+        for (var i = 0; i < paddles.length; i++) {
+            paddles[i].update();   
+        }
+        
+        
+        for (var i = 0; i < balls.length; i++) {
+            balls[i].update(delta);   
+        }
+        
+        
+        for (var i = 0; i < paddles.length; i++) {
+            for (var j = 0; j < balls.length; j++) {
+                var collision = checkCollisionBallRect(balls[j], paddles[i]);
+                
+            }
+        }
+        
+        // Check for collision with bricks
+        for (var i = 0; i < bricks.length; i++) {
+            for (var j = 0; j < balls.length; j++) {
+                var collision = checkCollisionBallRect(balls[j], bricks[i]);
+                if (collision != null) {
+                    // Remove the brick
+                    bricks.splice(i, 1);
+                }
+            }
+        }
+       
+        clear(ctx);
+        for (var i = 0; i < paddles.length; i++) {
+            paddles[i].draw(ctx);
+        }
+        
+        for (var i = 0; i < balls.length; i++) {
+            balls[i].draw(ctx);   
+        }
+        
+        for (var i = 0; i < bricks.length; i++) {
+            bricks[i].draw(ctx);   
+        }
+        
+        // Draw the score
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        ctx.fillText(scorePlayer1, 30, 10);
+        ctx.fillText(scorePlayer2, WIDTH - 30, 10);
+    }
+            
+
+    function AssetsLoaded() {
+        console.log("Assets loaded");
+        
+        init();
+    }
+    
+    var assetLoader = new AssetLoader();
+
+    
+    
+    var imageLoader = new ImageLoader();
+    imageLoader.AddImage(imgPaddle, "themes/" + theme + "/paddle.png");
+    imageLoader.AddImage(imgBrick, "themes/" + theme + "/brick.png");
+    imageLoader.AddImage(imgBG, "themes/" + theme + "/bg.png");
+    imageLoader.AddImage(imgBall, "themes/" + theme + "/ball.png");
+    assetLoader.AddLoader(imageLoader);
+
+    var levelLoader = new LevelLoader('levels/' + id + '.json');
+    assetLoader.AddLoader(levelLoader);
+    
+    assetLoader.StartLoading(AssetsLoaded);
+    
+
+            
+    function init() {
+        console.log("Initializing.");
+        canvas = document.getElementById("canvas");
+        ctx = canvas.getContext("2d");
+        ctx.font="30px Arial";
+        
+        initAudio();
+        
+        previousDate = new Date();
+        canvas.addEventListener('mousemove', onmousemove, true);
+        canvas.addEventListener('mousedown', onmousedown, true);
+        canvas.addEventListener('mouseup', onmouseup, true);
+
+        
+        return setInterval(draw, 1000/30);
+    }
+           
+</script>
+   
+        
+        
+    </body>
+</html>
